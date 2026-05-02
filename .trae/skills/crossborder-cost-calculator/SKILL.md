@@ -1,38 +1,52 @@
 ---
-name: "crossborder-cost-calculator"
-description: "计算境外电商商品的综合成本，包括采购价、运费、关税、平台费用等。Invoke when user needs to calculate cross-border e-commerce costs or price products for overseas sales."
+name: crossborder-cost-calculator
+description: Calculates comprehensive costs for cross-border e-commerce products including procurement, shipping, tariffs, and platform fees. Invoke when user needs to calculate cross-border e-commerce costs or determine product pricing for overseas sales.
 ---
 
-# 境外电商成本计算器
+# Cross-Border E-Commerce Cost Calculator
 
-## 功能介绍
+## When to Use
+Use this skill when:
+- Calculating total landed cost for imported goods
+- Determining pricing strategy for international markets
+- Comparing costs across different destination countries
+- Planning profit margins for cross-border sales
 
-本技能用于计算境外电商商品的综合成本，帮助卖家确定合理的售价和利润空间。
+## Cost Components
 
-## 成本构成要素
+| Component | Description | Example |
+|-----------|-------------|---------|
+| **Product Cost** | Purchase price from supplier | $50.00 |
+| **Domestic Shipping** | From supplier to domestic warehouse | $5.00 |
+| **International Shipping** | From domestic to destination country | $15.00 |
+| **Tariff** | Import duty based on HS code | 10% of CIF value |
+| **VAT/GST** | Value-added tax in destination country | 19% (Germany) |
+| **Platform Fees** | Marketplace commission | 15% of sales price |
+| **Storage** | Overseas warehouse fees (if applicable) | $2.00/month |
+| **Miscellaneous** | Packaging, insurance, handling | $3.00 |
 
-1. **采购成本**：商品的进货价格
-2. **国内运费**：从供应商到国内仓库的运费
-3. **国际物流费**：从国内仓库到海外目的地的运费
-4. **关税与税费**：目的国的进口关税、增值税等
-5. **平台费用**：电商平台佣金、手续费等
-6. **仓储费**：海外仓储费用（如适用）
-7. **其他杂费**：包装费、保险费等
-
-## 计算公式
+## Calculation Formula
 
 ```
-总成本 = 采购成本 + 国内运费 + 国际物流费 + 关税 + 平台费用 + 仓储费 + 杂费
-建议售价 = 总成本 × (1 + 利润率)
+CIF Value = Product Cost + Domestic Shipping + International Shipping
+Tariff = CIF Value × Tariff Rate
+VAT = (CIF Value + Tariff) × VAT Rate
+Total Cost = CIF Value + Tariff + VAT + Platform Fees + Storage + Miscellaneous
+Suggested Price = Total Cost × (1 + Profit Margin)
 ```
 
-## 使用步骤
+## Usage Steps
 
-1. 收集所有成本相关数据
-2. 调用成本计算函数
-3. 根据计算结果制定定价策略
+**Phase 1 — Gather Inputs**
+- [ ] Product cost from supplier
+- [ ] Domestic shipping cost
+- [ ] International shipping cost (by destination)
+- [ ] HS code for tariff classification
+- [ ] Destination country
+- [ ] Platform commission rate
+- [ ] Expected profit margin
 
-## 代码示例
+**Phase 2 — Calculate Costs**
 
 ```python
 def calculate_crossborder_cost(
@@ -40,76 +54,124 @@ def calculate_crossborder_cost(
     domestic_shipping: float,
     international_shipping: float,
     tariff_rate: float,
+    vat_rate: float,
     platform_commission_rate: float,
     storage_fee: float = 0,
     other_fees: float = 0,
     profit_margin: float = 0.3
 ) -> dict:
     """
-    计算境外电商综合成本
+    Calculate comprehensive cross-border e-commerce costs
     
     Args:
-        product_cost: 商品采购成本
-        domestic_shipping: 国内运费
-        international_shipping: 国际运费
-        tariff_rate: 关税率（如0.1表示10%）
-        platform_commission_rate: 平台佣金率
-        storage_fee: 仓储费
-        other_fees: 其他杂费
-        profit_margin: 期望利润率
+        product_cost: Purchase price from supplier
+        domestic_shipping: From supplier to domestic warehouse
+        international_shipping: From domestic to destination
+        tariff_rate: Import duty rate (e.g., 0.1 for 10%)
+        vat_rate: Value-added tax rate (e.g., 0.19 for 19%)
+        platform_commission_rate: Marketplace commission rate
+        storage_fee: Overseas storage cost
+        other_fees: Packaging, insurance, etc.
+        profit_margin: Desired profit margin (default 30%)
     
     Returns:
-        包含各项成本和建议售价的字典
+        Dictionary containing cost breakdown and suggested price
     """
-    # 计算关税（基于CIF价：成本+保险+运费）
+    # CIF value (Cost + Insurance + Freight)
     cif_value = product_cost + domestic_shipping + international_shipping
+    
+    # Calculate duties and taxes
     tariff = cif_value * tariff_rate
+    vat = (cif_value + tariff) * vat_rate
     
-    # 计算总成本
-    total_cost = (
-        product_cost +
-        domestic_shipping +
-        international_shipping +
-        tariff +
-        storage_fee +
-        other_fees
-    )
+    # Base cost before platform fees
+    base_cost = cif_value + tariff + vat + storage_fee + other_fees
     
-    # 计算平台佣金（基于售价预估）
-    # 先预估售价，再计算佣金
-    estimated_price = total_cost * (1 + profit_margin)
+    # Platform commission (based on final price)
+    estimated_price = base_cost / (1 - platform_commission_rate)
     platform_commission = estimated_price * platform_commission_rate
     
-    # 重新计算包含佣金的总成本
-    final_total_cost = total_cost + platform_commission
+    # Final total cost
+    total_cost = base_cost + platform_commission
     
-    # 最终建议售价
-    suggested_price = final_total_cost * (1 + profit_margin)
+    # Suggested price with profit margin
+    suggested_price = total_cost * (1 + profit_margin)
     
     return {
-        "product_cost": product_cost,
-        "domestic_shipping": domestic_shipping,
-        "international_shipping": international_shipping,
-        "tariff": tariff,
-        "platform_commission": platform_commission,
-        "storage_fee": storage_fee,
-        "other_fees": other_fees,
-        "total_cost": final_total_cost,
-        "suggested_price": suggested_price,
-        "profit_margin": profit_margin
+        "cif_value": round(cif_value, 2),
+        "tariff": round(tariff, 2),
+        "vat": round(vat, 2),
+        "storage_fee": round(storage_fee, 2),
+        "other_fees": round(other_fees, 2),
+        "platform_commission": round(platform_commission, 2),
+        "total_cost": round(total_cost, 2),
+        "suggested_price": round(suggested_price, 2),
+        "profit_margin": profit_margin,
+        "cost_breakdown": {
+            "product": round(product_cost / total_cost * 100, 1),
+            "shipping": round((domestic_shipping + international_shipping) / total_cost * 100, 1),
+            "duties": round((tariff + vat) / total_cost * 100, 1),
+            "fees": round((platform_commission + storage_fee + other_fees) / total_cost * 100, 1)
+        }
     }
 ```
 
-## 常见关税率参考
+**Phase 3 — Analyze Results**
+- [ ] Review cost breakdown percentages
+- [ ] Compare against target margins
+- [ ] Identify cost optimization opportunities
+- [ ] Adjust pricing strategy if needed
 
-- 美国：一般商品0-25%
-- 欧盟：0-17% VAT + 关税
-- 英国：0-20% VAT + 关税
-- 日本：0-10%消费税 + 关税
+## Common Tariff Rates by Country
 
-## 注意事项
+| Country | Standard Rate | Special Notes |
+|---------|---------------|---------------|
+| **United States** | 0-25% | Dependent on HS code |
+| **European Union** | 0-17% VAT + duties | VAT varies by country |
+| **United Kingdom** | 20% VAT + duties | Post-Brexit rules apply |
+| **Japan** | 10% consumption tax + duties | Lower rates for certain goods |
+| **Australia** | 10% GST + duties | GST on imports over AUD 1,000 |
+| **Canada** | 5% GST + provincial taxes + duties | Varies by province |
+| **Singapore** | 8% GST | GST on imports over SGD 400 |
+| **South Korea** | 10% VAT + duties | Complex tariff structure |
 
-1. 汇率波动会影响成本计算
-2. 不同国家的税费政策差异较大
-3. 物流时效与成本成正比
-4. 建议预留10-15%的风险缓冲
+## Best Practices
+
+1. **Verify HS Codes**: Incorrect classification can lead to unexpected costs
+2. **Check Trade Agreements**: Preferential rates may apply
+3. **Account for Exchange Rates**: Currency fluctuations impact final costs
+4. **Include Contingency**: Add 10-15% buffer for unexpected expenses
+5. **Compare Carriers**: Shipping costs vary significantly
+6. **Review Platform Fees**: Different marketplaces have different structures
+
+## Example Calculation
+
+```python
+# Example: Product from China to Germany
+result = calculate_crossborder_cost(
+    product_cost=50.00,
+    domestic_shipping=5.00,
+    international_shipping=15.00,
+    tariff_rate=0.05,      # 5% tariff
+    vat_rate=0.19,         # 19% German VAT
+    platform_commission_rate=0.15,  # 15% marketplace fee
+    storage_fee=2.00,
+    other_fees=3.00,
+    profit_margin=0.30
+)
+
+# Result:
+# CIF Value: $70.00
+# Tariff: $3.50
+# VAT: $14.07
+# Total Cost: $110.18
+# Suggested Price: $143.23
+```
+
+## Edge Cases to Consider
+
+- **Low-value shipments**: Some countries have de minimis thresholds
+- **Free Trade Agreements**: May reduce or eliminate tariffs
+- **Anti-dumping duties**: Additional duties on certain products
+- **Seasonal shipping costs**: Rates may fluctuate
+- **Currency conversion**: Use realistic exchange rates
